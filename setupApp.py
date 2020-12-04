@@ -32,7 +32,7 @@ import bdist_mpkg
 import py2app
 resources = glob.glob('psychopy/app/Resources/*')
 resources.append('/Library/Frameworks/Python.framework/Versions/2.7/include/python2.7/pyconfig.h')
-frameworks = ["libavbin.dylib", "/usr/lib/libxml2.2.dylib", #"libyaml.dylib",
+frameworks = ["/usr/lib/libxml2.2.dylib", #"libyaml.dylib",
               "libevent.dylib", "libffi.dylib",
               "libmp3lame.0.dylib",
               "/usr/local/Cellar/glfw/3.2.1/lib/libglfw.3.2.dylib",
@@ -71,16 +71,16 @@ includes = ['Tkinter', 'tkFileDialog',
             'configparser',
             ]
 packages = ['wx', 'psychopy',
-            'pyglet', 'pygame',  'pytz', 'OpenGL', 'glfw',
+            'pyglet', 'pytz', 'OpenGL', 'glfw',
             'scipy', 'matplotlib', 'lxml', 'xml', 'openpyxl',
             'moviepy', 'imageio', 'imageio_ffmpeg',
             '_sounddevice_data', '_soundfile_data',
-            'cffi','pycparser',
+            'cffi', 'pycparser',
             'PIL',  # 'Image',
             'objc', 'Quartz', 'AppKit', 'QTKit', 'Cocoa',
             'Foundation', 'CoreFoundation',
             'pkg_resources',  # needed for objc
-            'pyolib',
+            'pyolib', 'pyo',
             'requests', 'certifi', 'cryptography',
             'pyosf',
             # for unit testing
@@ -99,11 +99,15 @@ packages = ['wx', 'psychopy',
             'json_tricks',  # allows saving arrays/dates in json
             'git', 'gitlab',
             'astunparse', 'esprima',  # for translating/adapting py/JS
-            'pylsl', 'pygaze', 'smite',
+            'pylsl', 'pygaze',
+            'smite',  # https://github.com/marcus-nystrom/SMITE (not pypi!)
             'cv2',
             'badapted', 'darc_toolbox',  # adaptive methods from Ben Vincent
             'questplus',
             'metapensiero.pj', 'dukpy', 'macropy',
+            'jedi','parso',
+            'psychtoolbox',
+            'freetype', 'h5py',
             ]
 
 if sys.version_info.major >= 3:
@@ -121,7 +125,7 @@ setup(
             includes=includes,
             packages=packages,
             excludes=['bsddb', 'jinja2', 'IPython','ipython_genutils','nbconvert',
-                      'libsz.2.dylib',
+                      'libsz.2.dylib', 'pygame',
                       # 'stringprep',
                       'functools32',
                       ],  # anything we need to forcibly exclude?
@@ -132,12 +136,13 @@ setup(
             iconfile='psychopy/app/Resources/psychopy.icns',
             plist=dict(
                   CFBundleIconFile='psychopy.icns',
-                  CFBundleName               = "PsychoPy3",
+                  CFBundleName               = "PsychoPy",
                   CFBundleShortVersionString = version,  # must be in X.X.X format
-                  CFBundleGetInfoString      = "PsychoPy3 "+version,
-                  CFBundleExecutable         = "PsychoPy3",
-                  CFBundleIdentifier         = "org.psychopy.PsychoPy3",
+                  CFBundleVersion            = version,
+                  CFBundleExecutable         = "PsychoPy",
+                  CFBundleIdentifier         = "org.opensciencetools.psychopy",
                   CFBundleLicense            = "GNU GPLv3+",
+                  NSHumanReadableCopyright   = "Open Science Tools Limited",
                   CFBundleDocumentTypes=[dict(CFBundleTypeExtensions=['*'],
                                               CFBundleTypeRole='Editor')],
                   LSEnvironment=dict(PATH="/usr/local/git/bin:/usr/local/bin:"
@@ -153,7 +158,7 @@ setup(
 # 'lib' to the rpath as well. These were fine for the packaged
 # framework python but the libs in an app bundle are different.
 # So, create symlinks so they appear in the same place as in framework python
-rpath = "dist/PsychoPy3.app/Contents/Resources/"
+rpath = "dist/PsychoPy.app/Contents/Resources/"
 for libPath in opencvLibs:
     libname = os.path.split(libPath)[-1]
     realPath = "../../Frameworks/"+libname  # relative path (w.r.t. the fake)
@@ -167,6 +172,3 @@ os.symlink(realPath, fakePath)
 if writeNewInit:
     # remove unwanted info about this system post-build
     createInitFile.createInitFile(dist=None)
-
-# running testApp from within the app raises wx errors
-# shutil.rmtree("dist/PsychoPy3.app/Contents/Resources/lib/python2.6/psychopy/tests/testTheApp")

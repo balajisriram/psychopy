@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # Part of the PsychoPy library
-# Copyright (C) 2002-2018 Jonathan Peirce (C) 2019 Open Science Tools Ltd.
+# Copyright (C) 2002-2018 Jonathan Peirce (C) 2019-2020 Open Science Tools Ltd.
 # Distributed under the terms of the GNU General Public License (GPL).
 
 from __future__ import absolute_import, division, print_function
@@ -204,6 +204,7 @@ def init(rate=44100, stereo=True, buffer=128):
     else:
         if sys.platform == 'win32':
             # check for output device/driver
+            #todo: Throwing errors on one users' config https://discourse.psychopy.org/t/error-with-microphone-component-on-psychopy-2020/13168
             devNames, devIDs = get_output_devices()
             audioDriver, outputID = _bestDriver(devNames, devIDs)
             if outputID is None:

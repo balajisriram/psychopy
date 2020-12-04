@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # Part of the PsychoPy library
-# Copyright (C) 2002-2018 Jonathan Peirce (C) 2019 Open Science Tools Ltd.
+# Copyright (C) 2002-2018 Jonathan Peirce (C) 2019-2020 Open Science Tools Ltd.
 # Distributed under the terms of the GNU General Public License (GPL).
 
 
@@ -29,4 +29,11 @@ class ConnectionError(Exception):
 
 
 class NoGitError(DependencyError):
+    pass
+
+
+class ConditionsImportError(Exception):
+    pass
+
+class MissingFontError(Exception):
     pass

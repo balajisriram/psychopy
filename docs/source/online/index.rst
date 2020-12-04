@@ -22,13 +22,14 @@ Those steps are covered in detail here:
     usingPavlovia
     psychojsCode
     onlineParticipants
+    counterbalancingOnline
 
 but you should also be aware of the following:
 
 .. toctree::
     :maxdepth: 1
 
-	cautions
+    cautions
     status
     tech
 	

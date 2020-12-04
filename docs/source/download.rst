@@ -12,10 +12,10 @@ For the easiest installation download and install the Standalone package.
 
    <script src="https://cdn.jsdelivr.net/npm/ua-parser-js@0/dist/ua-parser.min.js"></script>
    <script>
-    
+
     let filename;
     let url;
-    let version='2020.1.1'
+    let version='2020.2.8'
 
     let clientInfo = UAParser(navigator.userAgent);
     var osLabel;
@@ -33,8 +33,8 @@ For the easiest installation download and install the Standalone package.
     }
     else if (navigator.platform == 'MacIntel') {
       osLabel = clientInfo.os.name+" "+clientInfo.os.version;
-      filename = '  Standalone PsychoPy '+version+' for MacOS';
-      url = 'https://github.com/psychopy/psychopy/releases/download/'+version+'/StandalonePsychoPy3-'+version+'-MacOS.dmg';
+      filename = '  Standalone PsychoPy '+version+' for macOS';
+      url = 'https://github.com/psychopy/psychopy/releases/download/'+version+'/StandalonePsychoPy-'+version+'-macOS.dmg';
     }
     else {
       osLabel = clientInfo.os.name+" ("+clientInfo.cpu.architecture+")";
@@ -49,6 +49,8 @@ For the easiest installation download and install the Standalone package.
    </script>
 
 **For all versions** see the `PsychoPy releases on github <https://github.com/psychopy/psychopy/releases>`_
+
+PsychoPy is distributed under the `GPL3 license <https://github.com/psychopy/psychopy/blob/master/LICENSE>`_
 
 .. _manual_install:
 
@@ -124,8 +126,8 @@ find and install the correct wheel for your particular flavor of linux.
 **Building Python PsychToolbox bindings:**
 
 The PsychToolbox bindings for Python provide superior timing for sounds and
-keyboard responses. Unfortunately we haven't bee able to build universal wheels
-for these yet so you may have to build the pkg yourself. That should be hard.
+keyboard responses. Unfortunately we haven't been able to build universal wheels
+for these yet so you may have to build the pkg yourself. That should not be hard.
 You need the necessary dev libraries installed first:
 
 .. code-block:: bash

@@ -4,7 +4,7 @@
 """A class representing a window for displaying one or more stimuli"""
 
 # Part of the PsychoPy library
-# Copyright (C) 2002-2018 Jonathan Peirce (C) 2019 Open Science Tools Ltd.
+# Copyright (C) 2002-2018 Jonathan Peirce (C) 2019-2020 Open Science Tools Ltd.
 # Distributed under the terms of the GNU General Public License (GPL).
 
 from __future__ import absolute_import, division, print_function
@@ -24,7 +24,7 @@ from past.builtins import basestring
 from collections import deque
 
 from psychopy.contrib.lazy_import import lazy_import
-from psychopy import colors
+from psychopy import colors, event
 import math
 from psychopy.clock import monotonicClock
 
@@ -545,6 +545,9 @@ class Window(object):
 
         self.refreshThreshold = 1.0  # initial val needed by flip()
 
+        self._editableChildren = []
+        self._currentEditableIndex = None
+
         # over several frames with no drawing
         self._monitorFrameRate = None
         # for testing when to stop drawing a stim:
@@ -571,6 +574,8 @@ class Window(object):
                 self.close()
 
         atexit.register(close_on_exit)
+
+        self._mouse = event.Mouse(win=self)
 
     def __del__(self):
         if self._closed is False:
@@ -893,6 +898,83 @@ class Window(object):
                             "In this case it was called with obj={}"
                             .format(repr(obj)))
 
+    @property
+    def currentEditable(self):
+        """The editable (Text?) object that currently has key focus"""
+        if not self._editableChildren:
+            return None
+        ii = self._currentEditableIndex
+        # make sure the object still exists or get another
+        object = None
+        while object is None and self._editableChildren:  # not found an object yet
+            if ii is None or ii < 0:  # None if not yet set one, <0 if all gone
+                return None
+            objectRef = self._editableChildren[ii]  # extract the weak reference
+            object = objectRef()  # get the actual object (None if deleted)
+            if not object:
+                self._editableChildren.remove(objectRef)  # remove and try another
+                if ii >= len(self._editableChildren):
+                    ii -= 1
+            else:
+                self._currentEditableIndex = ii
+        return object
+
+    @currentEditable.setter
+    def currentEditable(self, editable):
+        """Keeps the current editable stored as a weak ref"""
+        # Save previous editable
+        lastEditable = self.currentEditable
+        # Remove focus from last editable
+        if lastEditable is not None and lastEditable is not editable:
+            lastEditable.hasFocus = False
+        # Ensure that item is added to editables list
+        self._currentEditableIndex = self.addEditable(editable)
+        # Give focus to new current editable
+        editable.hasFocus = True
+
+    def addEditable(self, editable):
+        """Adds an editable element to the screen (something to which
+        characters can be sent with meaning from the keyboard).
+
+        The current editable object receiving chars is Window.currentEditable
+
+        :param editable:
+        :return:
+        """
+        # Ignore if object is not editable
+        if not hasattr(editable, "editable"):
+            return
+        if not editable.editable:
+            return
+        # If editable is already present, return its index
+        for ref in weakref.getweakrefs(editable):
+            if ref in self._editableChildren:
+                return self._editableChildren.index(ref)
+        # If editable is not already present, add it to the editables list
+        self._editableChildren.append(weakref.ref(editable))
+        # If this is the first editable obj then make it the current
+        if len(self._editableChildren) == 1:
+            self.currentEditable = editable
+        # Return the index of the appended item
+        return len(self._editableChildren) - 1
+
+
+    def removeEditable(self, editable):
+        # If editable is present, remove it from editables list
+        for ref in weakref.getweakrefs(editable):
+            if ref in self._editableChildren:
+                self._editableChildren.remove(ref)
+                # If editable was current, move on to next current
+                if self.currentEditable == self:
+                    self.nextEditable()
+
+    def nextEditable(self, chars=''):
+        """Moves focus of the cursor to the next editable window"""
+        ii = self._currentEditableIndex + 1
+        if ii > len(self._editableChildren)-1:
+            ii = 0  # wrap back to the first editable object
+        self.currentEditable = self._editableChildren[ii]
+        self._currentEditableIndex = ii
 
     @classmethod
     def dispatchAllWindowEvents(cls):
@@ -958,6 +1040,27 @@ class Window(object):
 
         # disable lighting
         self.useLights = False
+
+        # Check for mouse clicks on editables
+        if hasattr(self, '_editableChildren'):
+            # Make sure _editableChildren has actually been created
+            editablesOnScreen = []
+            for thisObj in self._editableChildren:
+                # Iterate through editables and decide which one should have focus
+                if isinstance(thisObj, weakref.ref):
+                    # Solidify weakref if necessary
+                    thisObj = thisObj()
+                if isinstance(thisObj.autoDraw, (bool, int, float)):
+                    # Store whether this editable is on screen
+                    editablesOnScreen.append(thisObj.autoDraw)
+                else:
+                    editablesOnScreen.append(False)
+                if self._mouse.isPressedIn(thisObj):
+                    # If editable was clicked on, give it focus
+                    self.currentEditable = thisObj
+            # If there is only one editable on screen, make sure it starts off with focus
+            if sum(editablesOnScreen) == 1:
+                self.currentEditable = self._editableChildren[editablesOnScreen.index(True)]
 
         flipThisFrame = self._startOfFlip()
         if self.useFBO and flipThisFrame:
@@ -1161,6 +1264,8 @@ class Window(object):
         for _ in range(flips - 1):
             self.flip(clearBuffer=False)
         self.flip(clearBuffer=clearBuffer)
+
+
 
     def setBuffer(self, buffer, clear=True):
         """Choose which buffer to draw to ('left' or 'right').

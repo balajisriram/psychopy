@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # Part of the PsychoPy library
-# Copyright (C) 2002-2018 Jonathan Peirce (C) 2019 Open Science Tools Ltd.
+# Copyright (C) 2002-2018 Jonathan Peirce (C) 2019-2020 Open Science Tools Ltd.
 # Distributed under the terms of the GNU General Public License (GPL).
 
 """Functions and classes related to file and directory handling
@@ -52,7 +52,11 @@ def fromFile(filename, encoding='utf-8-sig'):
     filename = pathToString(filename)
     if filename.endswith('.psydat'):
         with open(filename, 'rb') as f:
-            contents = pickle.load(f)
+            try:
+                contents = pickle.load(f)
+            except UnicodeDecodeError:
+                f.seek(0)  # reset to start of file to try again
+                contents = pickle.load(f, encoding='latin1')  # python 2 data files
             # if loading an experiment file make sure we don't save further
             # copies using __del__
             if hasattr(contents, 'abort'):

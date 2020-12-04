@@ -10,6 +10,7 @@ from builtins import range
 from past.builtins import basestring
 import os
 import re
+import ast
 import pickle
 import time
 import codecs
@@ -19,7 +20,7 @@ import pandas as pd
 from collections import OrderedDict
 from pkg_resources import parse_version
 
-from psychopy import logging
+from psychopy import logging, exceptions
 from psychopy.constants import PY3
 from psychopy.tools.filetools import pathToString
 
@@ -168,6 +169,33 @@ def indicesFromString(indsString):
         pass
 
 
+def listFromString(val):
+    """Take a string that looks like a list (with commas and/or [] and make
+    an actual python list"""
+    if type(val) == tuple:
+        return list(val)
+    elif type(val) == list:
+        return list(val)  # nothing to do
+    elif type(val) != str:
+        raise ValueError("_strToList requires a string as its input not {}"
+                         .format(repr(val)))
+    # try to evaluate with ast (works for "'yes,'no'" or "['yes', 'no']")
+    try:
+        iterable = ast.literal_eval(val)
+        if type(iterable) == tuple:
+            iterable = list(iterable)
+        return iterable
+    except (ValueError, SyntaxError):
+        pass  # e.g. "yes, no" won't work. We'll go on and try another way
+
+    val = val.strip()  # in case there are spaces
+    if val.startswith(('[', '(')) and val.endswith((']', ')')):
+        val = val[1:-1]
+    asList = val.split(",")
+    asList = [this.strip() for this in asList]
+    return asList
+
+
 def importConditions(fileName, returnFieldNames=False, selection=""):
     """Imports a list of conditions from an .xlsx, .csv, or .pkl file
 
@@ -201,9 +229,33 @@ def importConditions(fileName, returnFieldNames=False, selection=""):
         - "2:5"       # 2, 3, 4 (doesn't include last whole value)
         - "-10:2:"    # tenth from last to the last in steps of 2
         - slice(-10, 2, None)  # the same as above
-        - random(5) * 8  # five random vals 0-8
+        - random(5) * 8  # five random vals 0-7
 
     """
+
+    def _attemptImport(fileName, sep=',', dec='.'):
+        """Attempts to import file with specified settings and raises
+        ConditionsImportError if fails due to invalid format
+
+        :param filename: str
+        :param sep: str indicating the separator for cells (',', ';' etc)
+        :param dec: str indicating the decimal point ('.', '.')
+        :return: trialList, fieldNames
+        """
+        if fileName.endswith(('.csv', '.tsv')):
+            trialsArr = pd.read_csv(fileName, encoding='utf-8-sig',
+                                    sep=sep, decimal=dec)
+            logging.debug(u"Read csv file with pandas: {}".format(fileName))
+        elif fileName.endswith(('.xlsx', '.xls', '.xlsm')):
+            trialsArr = pd.read_excel(fileName)
+            logging.debug(u"Read Excel file with pandas: {}".format(fileName))
+        # then try to convert array to trialList and fieldnames
+        unnamed = trialsArr.columns.to_series().str.contains('^Unnamed: ')
+        trialsArr = trialsArr.loc[:, ~unnamed]  # clear unnamed cols
+        logging.debug(u"Clearing unnamed columns from {}".format(fileName))
+        trialList, fieldNames = pandasToDictList(trialsArr)
+
+        return trialList, fieldNames
 
     def _assertValidVarNames(fieldNames, fileName):
         """screens a list of names as candidate variable names. if all
@@ -213,14 +265,15 @@ def importConditions(fileName, returnFieldNames=False, selection=""):
         if not all(fieldNames):
             msg = ('Conditions file %s: Missing parameter name(s); '
                    'empty cell(s) in the first row?')
-            raise ValueError(msg % fileName)
+            raise exceptions.ConditionsImportError(msg % fileName)
         for name in fieldNames:
             OK, msg = isValidVariableName(name)
             if not OK:
                 # tailor message to importConditions
                 msg = msg.replace('Variables', 'Parameters (column headers)')
-                raise ValueError('Conditions file %s: %s%s"%s"' %
-                                  (fileName, msg, os.linesep * 2, name))
+                raise exceptions.ConditionsImportError(
+                    'Conditions file %s: %s%s"%s"' %
+                    (fileName, msg, os.linesep * 2, name))
 
     if fileName in ['None', 'none', None]:
         if returnFieldNames:
@@ -270,21 +323,21 @@ def importConditions(fileName, returnFieldNames=False, selection=""):
             trialList.append(thisTrial)
         return trialList, fieldNames
 
-    if fileName.endswith('.csv') or (fileName.endswith(('.xlsx','.xls','.xlsm'))
-                                     and haveXlrd):
-        if fileName.endswith('.csv'):
-            trialsArr = pd.read_csv(fileName, encoding='utf-8-sig')
-            logging.debug(u"Read csv file with pandas: {}".format(fileName))
+    if (fileName.endswith(('.csv', '.tsv'))
+            or (fileName.endswith(('.xlsx', '.xls', '.xlsm')) and haveXlrd)):
+        if fileName.endswith(('.csv', '.tsv', '.dlm')):  # delimited text file
+            for sep, dec in [ (',', '.'), (';', ','),  # most common in US, EU
+                              ('\t', '.'), ('\t', ','), (';', '.')]:
+                try:
+                    trialList, fieldNames = _attemptImport(fileName=fileName,
+                                                           sep=sep, dec=dec)
+                    break  # seems to have worked
+                except exceptions.ConditionsImportError as e:
+                    continue  # try a different format
         else:
-            trialsArr = pd.read_excel(fileName)
-            logging.debug(u"Read Excel file with pandas: {}".format(fileName))
+            trialList, fieldNames = _attemptImport(fileName=fileName)
 
-        unnamed = trialsArr.columns.to_series().str.contains('^Unnamed: ')
-        trialsArr = trialsArr.loc[:, ~unnamed]  # clear unnamed cols
-        logging.debug(u"Clearing unnamed columns from {}".format(fileName))
-        trialList, fieldNames = pandasToDictList(trialsArr)
-
-    elif fileName.endswith(('.xlsx','.xlsm')):
+    elif fileName.endswith(('.xlsx','.xlsm')):  # no xlsread so use openpyxl
         if not haveOpenpyxl:
             raise ImportError('openpyxl or xlrd is required for loading excel '
                               'files, but neither was found.')
@@ -366,7 +419,7 @@ def importConditions(fileName, returnFieldNames=False, selection=""):
             trialList.append(thisTrial)
     else:
         raise IOError('Your conditions file should be an '
-                      'xlsx, csv or pkl file')
+                      'xlsx, csv, dlm, tsv or pkl file')
 
     # if we have a selection then try to parse it
     if isinstance(selection, basestring) and len(selection) > 0:
@@ -385,8 +438,10 @@ def importConditions(fileName, returnFieldNames=False, selection=""):
     elif len(selection) > 0:
         allConds = trialList
         trialList = []
+        print(selection)
+        print(len(allConds))
         for ii in selection:
-            trialList.append(allConds[int(round(ii))])
+            trialList.append(allConds[int(ii)])
 
     logging.exp('Imported %s as conditions, %d conditions, %d params' %
                 (fileName, len(trialList), len(fieldNames)))

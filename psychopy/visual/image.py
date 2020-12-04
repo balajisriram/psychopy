@@ -4,7 +4,7 @@
 """Display an image on `psycopy.visual.Window`"""
 
 # Part of the PsychoPy library
-# Copyright (C) 2002-2018 Jonathan Peirce (C) 2019 Open Science Tools Ltd.
+# Copyright (C) 2002-2018 Jonathan Peirce (C) 2019-2020 Open Science Tools Ltd.
 # Distributed under the terms of the GNU General Public License (GPL).
 
 from __future__ import absolute_import, division, print_function
@@ -234,9 +234,12 @@ class ImageStim(BaseVisualStim, ContainerMixin, ColorMixin, TextureMixin):
     def __del__(self):
         """Remove textures from graphics card to prevent crash
         """
-        if hasattr(self, '_listID'):
-            GL.glDeleteLists(self._listID, 1)
-        self.clearTextures()
+        try:
+            if hasattr(self, '_listID'):
+                GL.glDeleteLists(self._listID, 1)
+            self.clearTextures()
+        except ModuleNotFoundError:
+            pass  # has probably been garbage-collected already
 
     def draw(self, win=None):
         """Draw.

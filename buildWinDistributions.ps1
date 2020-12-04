@@ -6,9 +6,9 @@
 # python setup.py bdist_wininst --install-script=psychopy_post_inst.py
 
 # remove editable installation
-$pyPaths = @("C:\Python27\", "C:\Python36\", "C:\Python36_64\")
-$names = @("PsychoPy3_PY2", "PsychoPy3", "PsychoPy3")
-$archs = @("win32", "win32", "win64")
+$pyPaths = @("C:\Python36\", "C:\Python36_64\")
+$names = @("PsychoPy3", "PsychoPy3")
+$archs = @("win32", "win64")
 
 # read from the version file
 $versionfile = Join-Path $pwd "version"
@@ -35,11 +35,11 @@ for ($i=0; $i -lt $pyPaths.Length; $i++) {
 
     echo 'moving files to ..\dist'
 
+    Invoke-Expression ("{0}python.exe setup.py clean --all" -f $pyPaths[$i])  # clean up our build dir
     # try to uninstall psychopy from site-packages
     Invoke-Expression ("{0}python.exe -m pip uninstall -y psychopy" -f $pyPaths[$i])
     # re-install the current version as editable/developer
     Invoke-Expression ("{0}python.exe -m pip install -e . --no-deps" -f $pyPaths[$i])
-    Invoke-Expression ("{0}python.exe setup.py clean --all" -f $pyPaths[$i])  # clean up our build dir
 
 }
 

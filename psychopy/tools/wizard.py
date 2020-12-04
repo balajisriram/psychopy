@@ -5,7 +5,7 @@
 """
 
 # Part of the PsychoPy library
-# Copyright (C) 2002-2018 Jonathan Peirce (C) 2019 Open Science Tools Ltd.
+# Copyright (C) 2002-2018 Jonathan Peirce (C) 2019-2020 Open Science Tools Ltd.
 # Distributed under the terms of the GNU General Public License (GPL).
 
 # Author: Jeremy Gray, Oct 2012; localization 2014
@@ -456,7 +456,7 @@ class BaseWizard(object):
             htmlDoc += _translate('''<p>Resources:
                 | <a href="http://www.psychopy.org/documentation.html">On-line documentation</a>
                 | Download <a href="http://www.psychopy.org/PsychoPyManual.pdf">PDF manual</a>
-                | <a href="https://discourse.osychopy.org">Search the user-group archives</a>
+                | <a href="https://discourse.psychopy.org">Search the user-group archives</a>
                 </p>''')
             htmlDoc += '<hr><p></p>    <table cellspacing=8 border=0>\n'
             htmlDoc += '    <tr><td><font size=+1><strong>' + \
@@ -562,7 +562,6 @@ class ConfigWizard(BaseWizard):
             msg = _translate("""<p>Critical issue:\n</p>""")
             msg += cardInfo
             fatalItemsList.append(msg)
-            pass
         # other fatal conditions? append a 'Critical issue' msg to itemsList
         if not fatalItemsList:
             dlg.addText(_translate("We'll go through a series of configura"
@@ -788,9 +787,9 @@ class BenchmarkWizard(BaseWizard):
                 fps = win.fps()  # get frames per sec
                 if len(event.getKeys(['escape'])):
                     sys.exit()
-                if fps < baseline * 0.6:
+                if (fps < baseline * 0.6) or (dotCount > 5000):
                     # only break when start dropping a LOT of frames (80% or
-                    # more)
+                    # more) or exceeded 5,000 dots
                     dotsInfo.append(
                         ('dots_' + fieldShape, str(bestDots), '', False))
                     break
@@ -800,10 +799,6 @@ class BenchmarkWizard(BaseWizard):
                     bestDots = dotCount
                 # but do allow to continue in case do better with more dots:
                 dotCount += 100
-                if dotCount > 1200:
-                    dotCount += 100
-                if dotCount > 2400:
-                    dotCount += 100
                 # show the dot count:
                 count.setText(str(dotCount), log=False)
                 count.draw()

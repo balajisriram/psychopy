@@ -4,7 +4,7 @@
 """Create geometric (vector) shapes by defining vertex locations."""
 
 # Part of the PsychoPy library
-# Copyright (C) 2002-2018 Jonathan Peirce (C) 2019 Open Science Tools Ltd.
+# Copyright (C) 2002-2018 Jonathan Peirce (C) 2019-2020 Open Science Tools Ltd.
 # Distributed under the terms of the GNU General Public License (GPL)
 
 from __future__ import absolute_import, print_function
@@ -32,7 +32,7 @@ from psychopy.tools.arraytools import val2array
 from psychopy.visual.basevisual import (BaseVisualStim, ColorMixin,
                                         ContainerMixin)
 from psychopy.visual.helpers import setColor
-
+import psychopy.visual
 from psychopy.contrib import tesselate
 import copy
 import numpy
@@ -143,16 +143,19 @@ class BaseShapeStim(BaseVisualStim, ColorMixin, ContainerMixin):
 
         # if the fillColor and lineColor are not set but color is
         # then the user probably wants color applied to both
-        if (lineColor==(1.0, 1.0, 1.0)
+        if (lineColor is (1.0, 1.0, 1.0)  # check if exactly as the default arg
                 and fillColor is None
                 and color is not None):
             self.color = color
+        else:
+            self.fillColor = fillColor
+            self.lineColor = lineColor
 
         # Other stuff
         self.depth = depth
         self.ori = numpy.array(ori, float)
         self.size = numpy.array([0.0, 0.0]) + size  # make sure that it's 2D
-        if vertices is not ():  # flag for when super-init'ing a ShapeStim
+        if vertices != ():  # flag for when super-init'ing a ShapeStim
             self.vertices = vertices  # call attributeSetter
         self.autoDraw = autoDraw  # call attributeSetter
 
@@ -169,6 +172,9 @@ class BaseShapeStim(BaseVisualStim, ColorMixin, ContainerMixin):
 
         :ref:`Operations <attrib-operations>` supported.
         """
+        if isinstance(self, psychopy.visual.Line) and isinstance(value, (int, float)):
+            if value > 127:
+                logging.warning("lineWidth is greater than max width supported by OpenGL. For lines thicker than 127px, please use a filled Rect instead.")
         self.__dict__['lineWidth'] = value
 
     def setLineWidth(self, value, operation='', log=None):
